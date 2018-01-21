@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/metalmatze/i3bargo/fontawesome"
 )
 
 // Block is a container for the information that being displayed.
@@ -106,7 +108,7 @@ func uptime(updates chan<- Update) {
 		uptime := time.Duration(uptimeFloat) * time.Second
 
 		b := Block{
-			FullText:            uptime.String(),
+			FullText:            fmt.Sprintf("%s %s", fontawesome.ArrowCircleUp, uptime.String()),
 			Separator:           true,
 			SeparatorBlockWidth: 20,
 		}
@@ -139,7 +141,7 @@ func temperature(updates chan<- Update) {
 		}
 
 		b := Block{
-			FullText:            fmt.Sprintf("%d°C", celsius/1000),
+			FullText:            fmt.Sprintf("%s %d°C", fontawesome.ThermometerFull, celsius/1000),
 			Separator:           true,
 			SeparatorBlockWidth: 20,
 		}
@@ -200,7 +202,7 @@ func volume(updates chan<- Update) {
 		}
 
 		b := Block{
-			FullText:            fulltext,
+			FullText:            fmt.Sprintf("%s %s", fontawesome.VolumeUp, fulltext),
 			Separator:           true,
 			SeparatorBlockWidth: 20,
 		}
