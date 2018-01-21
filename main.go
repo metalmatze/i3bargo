@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -37,15 +38,24 @@ type Update struct {
 	Content []byte
 }
 
+type updater func(place int, updates chan<- Update)
+
 func main() {
 	updates := make(chan Update)
 
-	go datetime(updates)
-	go uptime(updates)
-	go temperature(updates)
-	go volume(updates)
+	updaters := []updater{
+		memory,
+		volume,
+		temperature,
+		uptime,
+		datetime,
+	}
 
-	state := make([][]byte, 4)
+	for i, updater := range updaters {
+		go updater(i, updates)
+	}
+
+	state := make([][]byte, len(updaters))
 
 	fmt.Println(`{ "version": 1 }`)
 	fmt.Println("[")
@@ -69,7 +79,7 @@ func main() {
 	}
 }
 
-func datetime(updates chan<- Update) {
+func datetime(place int, updates chan<- Update) {
 	for {
 		b := Block{
 			FullText:            time.Now().Format("2006-01-02 15:04:05"),
@@ -83,13 +93,13 @@ func datetime(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 3, Content: out}
+		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(time.Second)
 	}
 }
 
-func uptime(updates chan<- Update) {
+func uptime(place int, updates chan<- Update) {
 	for {
 		content, err := ioutil.ReadFile("/proc/uptime")
 		if err != nil {
@@ -119,13 +129,13 @@ func uptime(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 2, Content: out}
+		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func temperature(updates chan<- Update) {
+func temperature(place int, updates chan<- Update) {
 	for {
 		content, err := ioutil.ReadFile("/sys/class/hwmon/hwmon1/temp1_input")
 		if err != nil {
@@ -152,7 +162,7 @@ func temperature(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 1, Content: out}
+		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(5 * time.Second)
 	}
@@ -160,7 +170,7 @@ func temperature(updates chan<- Update) {
 
 var volumeRegex = regexp.MustCompile(`\[(\d{1,3})\%\]\s\[(on|off)\]`)
 
-func volume(updates chan<- Update) {
+func volume(place int, updates chan<- Update) {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel() // TODO: Fix possible leak
@@ -213,7 +223,47 @@ func volume(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 0, Content: out}
+		updates <- Update{Place: place, Content: out}
+
+		time.Sleep(time.Second)
+	}
+}
+
+func memory(place int, updates chan<- Update) {
+	for {
+		file, err := os.Open("/proc/meminfo")
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+		defer file.Close() // TODO: Fix possible leak
+
+		var total, free, available float64
+		_, err = fmt.Fscanf(file,
+			"MemTotal: %f kB\nMemFree: %f kB\nMemAvailable: %f",
+			&total,
+			&free,
+			&available,
+		)
+		if err != nil {
+			// TODO: figure out error handling
+			fmt.Println(err)
+			return
+		}
+
+		b := Block{
+			FullText:            fmt.Sprintf("%s %.2fG", fontawesome.Microchip, available/(1024*1024)),
+			Separator:           true,
+			SeparatorBlockWidth: 20,
+		}
+
+		out, err := json.Marshal(b)
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+
+		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(time.Second)
 	}

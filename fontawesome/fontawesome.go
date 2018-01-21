@@ -4,6 +4,7 @@ const (
 	ArrowCircleUp            = "\uF0AA"
 	Chrome                   = "\uF268"
 	Globe                    = "\uF0AC"
+	Microchip                = "\uF2DB"
 	ThermometerEmpty         = "\uF2CB"
 	ThermometerFull          = "\uF2C7"
 	ThermometerHalf          = "\uF2C9"
