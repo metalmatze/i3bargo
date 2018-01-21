@@ -36,8 +36,9 @@ func main() {
 
 	go datetime(updates)
 	go uptime(updates)
+	go temperature(updates)
 
-	state := make([][]byte, 2)
+	state := make([][]byte, 3)
 
 	fmt.Println(`{ "version": 1 }`)
 	fmt.Println("[")
@@ -75,7 +76,7 @@ func datetime(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 1, Content: out}
+		updates <- Update{Place: 2, Content: out}
 
 		time.Sleep(time.Second)
 	}
@@ -111,8 +112,41 @@ func uptime(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 0, Content: out}
+		updates <- Update{Place: 1, Content: out}
 
 		time.Sleep(10 * time.Second)
+	}
+}
+
+func temperature(updates chan<- Update) {
+	for {
+		content, err := ioutil.ReadFile("/sys/class/hwmon/hwmon1/temp1_input")
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+		content = bytes.TrimSpace(content)
+
+		celsius, err := strconv.ParseInt(string(content), 10, 64)
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+
+		b := Block{
+			FullText:            fmt.Sprintf("%d°C", celsius/1000),
+			Separator:           true,
+			SeparatorBlockWidth: 20,
+		}
+
+		out, err := json.Marshal(b)
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+
+		updates <- Update{Place: 0, Content: out}
+
+		time.Sleep(5 * time.Second)
 	}
 }
