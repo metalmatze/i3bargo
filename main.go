@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -37,8 +41,9 @@ func main() {
 	go datetime(updates)
 	go uptime(updates)
 	go temperature(updates)
+	go volume(updates)
 
-	state := make([][]byte, 3)
+	state := make([][]byte, 4)
 
 	fmt.Println(`{ "version": 1 }`)
 	fmt.Println("[")
@@ -76,7 +81,7 @@ func datetime(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 2, Content: out}
+		updates <- Update{Place: 3, Content: out}
 
 		time.Sleep(time.Second)
 	}
@@ -112,7 +117,7 @@ func uptime(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 1, Content: out}
+		updates <- Update{Place: 2, Content: out}
 
 		time.Sleep(10 * time.Second)
 	}
@@ -145,8 +150,69 @@ func temperature(updates chan<- Update) {
 			return
 		}
 
-		updates <- Update{Place: 0, Content: out}
+		updates <- Update{Place: 1, Content: out}
 
 		time.Sleep(5 * time.Second)
+	}
+}
+
+var volumeRegex = regexp.MustCompile(`\[(\d{1,3})\%\]\s\[(on|off)\]`)
+
+func volume(updates chan<- Update) {
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+		defer cancel() // TODO: Fix possible leak
+
+		cmd := exec.CommandContext(ctx, "amixer", "-D", "default", "get", "Master")
+		output, err := cmd.Output()
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+
+		var volText, muteText string
+
+		scanner := bufio.NewScanner(bytes.NewBuffer(output))
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			if volumeRegex.MatchString(line) {
+				matches := volumeRegex.FindStringSubmatch(line)
+				volText, muteText = matches[1], matches[2]
+				break
+			}
+		}
+
+		vol, err := strconv.ParseInt(volText, 10, 64)
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+
+		muted := false
+		if muteText == "off" {
+			muted = true
+		}
+
+		fulltext := fmt.Sprintf("%d%%", vol)
+		if muted {
+			fulltext = "off"
+		}
+
+		b := Block{
+			FullText:            fulltext,
+			Separator:           true,
+			SeparatorBlockWidth: 20,
+		}
+
+		out, err := json.Marshal(b)
+		if err != nil {
+			// TODO: figure out error handling
+			return
+		}
+
+		updates <- Update{Place: 0, Content: out}
+
+		time.Sleep(time.Second)
 	}
 }
