@@ -2,6 +2,7 @@ package fontawesome
 
 const (
 	ArrowCircleUp            = "\uF0AA"
+	BatteryFull              = "\uF240"
 	Chrome                   = "\uF268"
 	Globe                    = "\uF0AC"
 	Microchip                = "\uF2DB"

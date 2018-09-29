@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	batt "github.com/distatus/battery"
 	"github.com/metalmatze/i3bargo/fontawesome"
 )
 
@@ -47,6 +48,7 @@ func main() {
 		memory,
 		volume,
 		temperature,
+		battery,
 		uptime,
 		datetime,
 	}
@@ -76,6 +78,49 @@ func main() {
 			fmt.Printf("\t%s%s\n", s, comma)
 		}
 		fmt.Println("],")
+	}
+}
+
+func battery(place int, updates chan<- Update) {
+	for {
+		b, err := batt.Get(0)
+		if err != nil {
+			continue
+		}
+
+		w := &bytes.Buffer{}
+
+		w.WriteString(fmt.Sprintf("%s ", fontawesome.BatteryFull))
+
+		fmt.Fprintf(w, "%.0f%%", (b.Current/b.Full)*100)
+
+		d, err := time.ParseDuration(fmt.Sprintf("%fh", b.Current/b.ChargeRate))
+		if err != nil {
+			continue
+		}
+
+		w.WriteString(" - ")
+
+		if d.Hours() > 1 {
+			fmt.Fprintf(w, "%dh", int(d.Hours()))
+		} else {
+			fmt.Fprintf(w, "%dm", int(d.Minutes()))
+		}
+
+		block := Block{
+			FullText:            w.String(),
+			Separator:           true,
+			SeparatorBlockWidth: 20,
+		}
+
+		out, err := json.Marshal(block)
+		if err != nil {
+			continue
+		}
+
+		updates <- Update{Place: place, Content: out}
+
+		time.Sleep(time.Second)
 	}
 }
 
