@@ -56,7 +56,7 @@ func main() {
 		memory,
 		volume,
 		temperatureUpdater,
-		battery,
+		batteryUpdater,
 		uptime,
 		datetimeUpdater,
 	}
@@ -95,52 +95,54 @@ func main() {
 	}
 }
 
-func battery(place uint, updates chan<- Update) {
+func batteryUpdater(place uint, updates chan<- Update) {
 	for {
-		b, err := batt.Get(0)
-		if err != nil {
-			time.Sleep(time.Second) // sleep when not battery found
-			continue
+		out, err := battery()
+
+		updates <- Update{
+			Place:   place,
+			Content: out,
+			Error:   err,
 		}
-
-		w := &bytes.Buffer{}
-
-		w.WriteString(fmt.Sprintf("%s ", fontawesome.BatteryFull))
-
-		fmt.Fprintf(w, "%.0f%%", (b.Current/b.Full)*100)
-
-		if b.Current != b.Full {
-			d, err := time.ParseDuration(fmt.Sprintf("%fh", b.Current/b.ChargeRate))
-			if err != nil {
-				time.Sleep(time.Second)
-				continue
-			}
-
-			w.WriteString(" - ")
-
-			if d.Hours() > 1 {
-				fmt.Fprintf(w, "%dh", int(d.Hours()))
-			} else {
-				fmt.Fprintf(w, "%dm", int(d.Minutes()))
-			}
-		}
-
-		block := Block{
-			FullText:            w.String(),
-			Separator:           true,
-			SeparatorBlockWidth: 20,
-		}
-
-		out, err := json.Marshal(block)
-		if err != nil {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(time.Second)
 	}
+}
+
+func battery() (json.RawMessage, error) {
+	b, err := batt.Get(0)
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+	}
+
+	w := &bytes.Buffer{}
+
+	w.WriteString(fmt.Sprintf("%s ", fontawesome.BatteryFull))
+
+	fmt.Fprintf(w, "%.0f%%", (b.Current/b.Full)*100)
+
+	if b.Current != b.Full {
+		d, err := time.ParseDuration(fmt.Sprintf("%fh", b.Current/b.ChargeRate))
+		if err != nil {
+			return nil, err // TODO: Use errors.Wrap
+		}
+
+		w.WriteString(" - ")
+
+		if d.Hours() > 1 {
+			fmt.Fprintf(w, "%dh", int(d.Hours()))
+		} else {
+			fmt.Fprintf(w, "%dm", int(d.Minutes()))
+		}
+	}
+
+	block := Block{
+		FullText:            w.String(),
+		Separator:           true,
+		SeparatorBlockWidth: 20,
+	}
+
+	return json.Marshal(block)
 }
 
 func datetimeUpdater(place uint, updates chan<- Update) {
