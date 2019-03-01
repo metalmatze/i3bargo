@@ -339,7 +339,7 @@ func memory() (json.RawMessage, error) {
 	}
 
 	b := Block{
-		FullText:            fmt.Sprintf("%s %.2fG", fontawesome.Microchip, available/(1024^2)),
+		FullText:            fmt.Sprintf("%s %.2fG", fontawesome.Microchip, available/(1024*1024)),
 		Separator:           true,
 		SeparatorBlockWidth: 20,
 	}
