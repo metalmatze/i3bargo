@@ -85,6 +85,7 @@ func battery(place int, updates chan<- Update) {
 	for {
 		b, err := batt.Get(0)
 		if err != nil {
+			time.Sleep(time.Second) // sleep when not battery found
 			continue
 		}
 
@@ -94,17 +95,20 @@ func battery(place int, updates chan<- Update) {
 
 		fmt.Fprintf(w, "%.0f%%", (b.Current/b.Full)*100)
 
-		d, err := time.ParseDuration(fmt.Sprintf("%fh", b.Current/b.ChargeRate))
-		if err != nil {
-			continue
-		}
+		if b.Current != b.Full {
+			d, err := time.ParseDuration(fmt.Sprintf("%fh", b.Current/b.ChargeRate))
+			if err != nil {
+				time.Sleep(time.Second)
+				continue
+			}
 
-		w.WriteString(" - ")
+			w.WriteString(" - ")
 
-		if d.Hours() > 1 {
-			fmt.Fprintf(w, "%dh", int(d.Hours()))
-		} else {
-			fmt.Fprintf(w, "%dm", int(d.Minutes()))
+			if d.Hours() > 1 {
+				fmt.Fprintf(w, "%dh", int(d.Hours()))
+			} else {
+				fmt.Fprintf(w, "%dm", int(d.Minutes()))
+			}
 		}
 
 		block := Block{
@@ -115,6 +119,7 @@ func battery(place int, updates chan<- Update) {
 
 		out, err := json.Marshal(block)
 		if err != nil {
+			time.Sleep(time.Second)
 			continue
 		}
 
