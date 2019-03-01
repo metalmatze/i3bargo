@@ -57,7 +57,7 @@ func main() {
 		volume,
 		temperatureUpdater,
 		batteryUpdater,
-		uptime,
+		uptimeUpdater,
 		datetimeUpdater,
 	}
 
@@ -169,40 +169,42 @@ func datetime() (json.RawMessage, error) {
 	return json.Marshal(b)
 }
 
-func uptime(place uint, updates chan<- Update) {
+func uptimeUpdater(place uint, updates chan<- Update) {
 	for {
-		content, err := ioutil.ReadFile("/proc/uptime")
-		if err != nil {
-			// TODO: figure out error handling
-			return
+		out, err := uptime()
+
+		updates <- Update{
+			Place:   place,
+			Content: out,
+			Error:   err,
 		}
-		content = bytes.TrimSpace(content)
-		contents := bytes.Split(content, []byte(" "))
-
-		uptimeFloat, err := strconv.ParseFloat(string(contents[0]), 64)
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-
-		uptime := time.Duration(uptimeFloat) * time.Second
-
-		b := Block{
-			FullText:            fmt.Sprintf("%s %s", fontawesome.ArrowCircleUp, uptime.String()),
-			Separator:           true,
-			SeparatorBlockWidth: 20,
-		}
-
-		out, err := json.Marshal(b)
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-
-		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func uptime() (json.RawMessage, error) {
+	content, err := ioutil.ReadFile("/proc/uptime")
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+	}
+	content = bytes.TrimSpace(content)
+	contents := bytes.Split(content, []byte(" "))
+
+	uptimeFloat, err := strconv.ParseFloat(string(contents[0]), 64)
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+	}
+
+	uptime := time.Duration(uptimeFloat) * time.Second
+
+	b := Block{
+		FullText:            fmt.Sprintf("%s %s", fontawesome.ArrowCircleUp, uptime.String()),
+		Separator:           true,
+		SeparatorBlockWidth: 20,
+	}
+
+	return json.Marshal(b)
 }
 
 func temperatureUpdater(place uint, updates chan<- Update) {
