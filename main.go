@@ -35,11 +35,11 @@ type Block struct {
 
 // Update is an event send by funcs to update the state.
 type Update struct {
-	Place   int
-	Content []byte
+	Place   uint
+	Content json.RawMessage
 }
 
-type updater func(place int, updates chan<- Update)
+type updater func(place uint, updates chan<- Update)
 
 func main() {
 	updates := make(chan Update)
@@ -54,10 +54,10 @@ func main() {
 	}
 
 	for i, updater := range updaters {
-		go updater(i, updates)
+		go updater(uint(i), updates)
 	}
 
-	state := make([][]byte, len(updaters))
+	state := make([]json.RawMessage, len(updaters))
 
 	fmt.Println(`{ "version": 1 }`)
 	fmt.Println("[")
@@ -81,7 +81,7 @@ func main() {
 	}
 }
 
-func battery(place int, updates chan<- Update) {
+func battery(place uint, updates chan<- Update) {
 	for {
 		b, err := batt.Get(0)
 		if err != nil {
@@ -129,7 +129,7 @@ func battery(place int, updates chan<- Update) {
 	}
 }
 
-func datetime(place int, updates chan<- Update) {
+func datetime(place uint, updates chan<- Update) {
 	for {
 		b := Block{
 			FullText:            time.Now().Format("2006-01-02 15:04:05"),
@@ -149,7 +149,7 @@ func datetime(place int, updates chan<- Update) {
 	}
 }
 
-func uptime(place int, updates chan<- Update) {
+func uptime(place uint, updates chan<- Update) {
 	for {
 		content, err := ioutil.ReadFile("/proc/uptime")
 		if err != nil {
@@ -185,7 +185,7 @@ func uptime(place int, updates chan<- Update) {
 	}
 }
 
-func temperature(place int, updates chan<- Update) {
+func temperature(place uint, updates chan<- Update) {
 	for {
 		content, err := ioutil.ReadFile("/sys/class/hwmon/hwmon1/temp1_input")
 		if err != nil {
@@ -220,7 +220,7 @@ func temperature(place int, updates chan<- Update) {
 
 var volumeRegex = regexp.MustCompile(`\[(\d{1,3})\%\]\s\[(on|off)\]`)
 
-func volume(place int, updates chan<- Update) {
+func volume(place uint, updates chan<- Update) {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel() // TODO: Fix possible leak
@@ -279,7 +279,7 @@ func volume(place int, updates chan<- Update) {
 	}
 }
 
-func memory(place int, updates chan<- Update) {
+func memory(place uint, updates chan<- Update) {
 	for {
 		file, err := os.Open("/proc/meminfo")
 		if err != nil {
