@@ -50,7 +50,7 @@ func main() {
 		temperature,
 		battery,
 		uptime,
-		datetime,
+		datetimeUpdater,
 	}
 
 	for i, updater := range updaters {
@@ -129,24 +129,28 @@ func battery(place uint, updates chan<- Update) {
 	}
 }
 
-func datetime(place uint, updates chan<- Update) {
+func datetimeUpdater(place uint, updates chan<- Update) {
 	for {
-		b := Block{
-			FullText:            time.Now().Format("2006-01-02 15:04:05"),
-			Separator:           true,
-			SeparatorBlockWidth: 20,
-		}
+		out, err := datetime()
 
-		out, err := json.Marshal(b)
-		if err != nil {
-			// TODO: figure out error handling
-			return
+		updates <- Update{
+			Place:   place,
+			Content: out,
+			Error:   err,
 		}
-
-		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(time.Second)
 	}
+}
+
+func datetime() (json.RawMessage, error) {
+	b := Block{
+		FullText:            time.Now().Format("2006-01-02 15:04:05"),
+		Separator:           true,
+		SeparatorBlockWidth: 20,
+	}
+
+	return json.Marshal(b)
 }
 
 func uptime(place uint, updates chan<- Update) {
