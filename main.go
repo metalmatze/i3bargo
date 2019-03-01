@@ -55,7 +55,7 @@ func main() {
 	updaters := []updater{
 		memory,
 		volume,
-		temperature,
+		temperatureUpdater,
 		battery,
 		uptime,
 		datetimeUpdater,
@@ -203,37 +203,39 @@ func uptime(place uint, updates chan<- Update) {
 	}
 }
 
-func temperature(place uint, updates chan<- Update) {
+func temperatureUpdater(place uint, updates chan<- Update) {
 	for {
-		content, err := ioutil.ReadFile("/sys/class/hwmon/hwmon1/temp1_input")
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-		content = bytes.TrimSpace(content)
+		out, err := temperature()
 
-		celsius, err := strconv.ParseInt(string(content), 10, 64)
-		if err != nil {
-			// TODO: figure out error handling
-			return
+		updates <- Update{
+			Place:   place,
+			Content: out,
+			Error:   err,
 		}
-
-		b := Block{
-			FullText:            fmt.Sprintf("%s %d°C", fontawesome.ThermometerFull, celsius/1000),
-			Separator:           true,
-			SeparatorBlockWidth: 20,
-		}
-
-		out, err := json.Marshal(b)
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-
-		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(5 * time.Second)
 	}
+}
+
+func temperature() (json.RawMessage, error) {
+	content, err := ioutil.ReadFile("/sys/class/hwmon/hwmon1/temp1_input")
+	if err != nil {
+		return nil, err
+	}
+	content = bytes.TrimSpace(content)
+
+	celsius, err := strconv.ParseInt(string(content), 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	b := Block{
+		FullText:            fmt.Sprintf("%s %d°C", fontawesome.ThermometerFull, celsius/1000),
+		Separator:           true,
+		SeparatorBlockWidth: 20,
+	}
+
+	return json.Marshal(b)
 }
 
 var volumeRegex = regexp.MustCompile(`\[(\d{1,3})\%\]\s\[(on|off)\]`)
