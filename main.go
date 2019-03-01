@@ -53,7 +53,7 @@ func main() {
 	updates := make(chan Update)
 
 	updaters := []updater{
-		memory,
+		memoryUpdater,
 		volume,
 		temperatureUpdater,
 		batteryUpdater,
@@ -303,42 +303,43 @@ func volume(place uint, updates chan<- Update) {
 	}
 }
 
-func memory(place uint, updates chan<- Update) {
+func memoryUpdater(place uint, updates chan<- Update) {
 	for {
-		file, err := os.Open("/proc/meminfo")
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-		defer file.Close() // TODO: Fix possible leak
+		out, err := memory()
 
-		var total, free, available float64
-		_, err = fmt.Fscanf(file,
-			"MemTotal: %f kB\nMemFree: %f kB\nMemAvailable: %f",
-			&total,
-			&free,
-			&available,
-		)
-		if err != nil {
-			// TODO: figure out error handling
-			fmt.Println(err)
-			return
+		updates <- Update{
+			Place:   place,
+			Content: out,
+			Error:   err,
 		}
-
-		b := Block{
-			FullText:            fmt.Sprintf("%s %.2fG", fontawesome.Microchip, available/(1024*1024)),
-			Separator:           true,
-			SeparatorBlockWidth: 20,
-		}
-
-		out, err := json.Marshal(b)
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-
-		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(time.Second)
 	}
+}
+
+func memory() (json.RawMessage, error) {
+	file, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+	}
+	defer file.Close()
+
+	var total, free, available float64
+	_, err = fmt.Fscanf(file,
+		"MemTotal: %f kB\nMemFree: %f kB\nMemAvailable: %f",
+		&total,
+		&free,
+		&available,
+	)
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+	}
+
+	b := Block{
+		FullText:            fmt.Sprintf("%s %.2fG", fontawesome.Microchip, available/(1024^2)),
+		Separator:           true,
+		SeparatorBlockWidth: 20,
+	}
+
+	return json.Marshal(b)
 }
