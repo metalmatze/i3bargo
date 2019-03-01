@@ -37,11 +37,19 @@ type Block struct {
 type Update struct {
 	Place   uint
 	Content json.RawMessage
+	Error   error
 }
 
 type updater func(place uint, updates chan<- Update)
 
 func main() {
+	logs, err := ioutil.TempFile("", "i3bargo")
+	if err != nil {
+		fmt.Println("failed to open logs file:", err)
+		os.Exit(1)
+	}
+	defer logs.Close()
+
 	updates := make(chan Update)
 
 	updaters := []updater{
@@ -63,6 +71,12 @@ func main() {
 	fmt.Println("[")
 	for update := range updates {
 		state[update.Place] = update.Content
+
+		if update.Error != nil {
+			logs.WriteString(fmt.Sprintf("error in updater: %v\n", update.Error))
+			logs.Sync()
+			state[update.Place] = json.RawMessage(`{"full_text":" error","separator":true,"separator_block_width":20}`)
+		}
 
 		fmt.Println("[")
 		for i, s := range state {
