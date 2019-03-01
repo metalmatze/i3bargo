@@ -54,7 +54,7 @@ func main() {
 
 	updaters := []updater{
 		memoryUpdater,
-		volume,
+		volumeUpdater,
 		temperatureUpdater,
 		batteryUpdater,
 		uptimeUpdater,
@@ -242,65 +242,68 @@ func temperature() (json.RawMessage, error) {
 	return json.Marshal(b)
 }
 
-var volumeRegex = regexp.MustCompile(`\[(\d{1,3})\%\]\s\[(on|off)\]`)
-
-func volume(place uint, updates chan<- Update) {
+func volumeUpdater(place uint, updates chan<- Update) {
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-		defer cancel() // TODO: Fix possible leak
+		out, err := volume()
 
-		cmd := exec.CommandContext(ctx, "amixer", "-D", "default", "get", "Master")
-		output, err := cmd.Output()
-		if err != nil {
-			// TODO: figure out error handling
-			return
+		updates <- Update{
+			Place:   place,
+			Content: out,
+			Error:   err,
 		}
-
-		var volText, muteText string
-
-		scanner := bufio.NewScanner(bytes.NewBuffer(output))
-		for scanner.Scan() {
-			line := scanner.Text()
-
-			if volumeRegex.MatchString(line) {
-				matches := volumeRegex.FindStringSubmatch(line)
-				volText, muteText = matches[1], matches[2]
-				break
-			}
-		}
-
-		vol, err := strconv.ParseInt(volText, 10, 64)
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-
-		muted := false
-		if muteText == "off" {
-			muted = true
-		}
-
-		fulltext := fmt.Sprintf("%d%%", vol)
-		if muted {
-			fulltext = "off"
-		}
-
-		b := Block{
-			FullText:            fmt.Sprintf("%s %s", fontawesome.VolumeUp, fulltext),
-			Separator:           true,
-			SeparatorBlockWidth: 20,
-		}
-
-		out, err := json.Marshal(b)
-		if err != nil {
-			// TODO: figure out error handling
-			return
-		}
-
-		updates <- Update{Place: place, Content: out}
 
 		time.Sleep(time.Second)
 	}
+}
+
+var volumeRegex = regexp.MustCompile(`\[(\d{1,3})\%\]\s\[(on|off)\]`)
+
+func volume() (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "amixer", "-D", "default", "get", "Master")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+	}
+
+	var volText, muteText string
+
+	scanner := bufio.NewScanner(bytes.NewBuffer(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if volumeRegex.MatchString(line) {
+			matches := volumeRegex.FindStringSubmatch(line)
+			volText, muteText = matches[1], matches[2]
+			break
+		}
+	}
+
+	vol, err := strconv.ParseInt(volText, 10, 64)
+	if err != nil {
+		return nil, err // TODO: Use errors.Wrap
+
+	}
+
+	muted := false
+	if muteText == "off" {
+		muted = true
+	}
+
+	fulltext := fmt.Sprintf("%d%%", vol)
+	if muted {
+		fulltext = "off"
+	}
+
+	b := Block{
+		FullText:            fmt.Sprintf("%s %s", fontawesome.VolumeUp, fulltext),
+		Separator:           true,
+		SeparatorBlockWidth: 20,
+	}
+
+	return json.Marshal(b)
 }
 
 func memoryUpdater(place uint, updates chan<- Update) {
