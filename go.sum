@@ -1,0 +1,8 @@
+github.com/DHowett/go-plist v0.0.0-20180609054337-500bd5b9081b h1:WFNhl1+1ofCWWdNFEhut77cmuMXjJYYvkEVloDdaUCI=
+github.com/DHowett/go-plist v0.0.0-20180609054337-500bd5b9081b/go.mod h1:5paT5ZDrOm8eAJPem2Bd+q3FTi3Gxm/U4tb2tH8YIUQ=
+github.com/distatus/battery v0.0.0-20170521010419-916919eb43bd h1:rxw7AZpSwNgPPFdxDNSwQ+TfvOjmSGDK6tlpY7vw9bw=
+github.com/distatus/battery v0.0.0-20170521010419-916919eb43bd/go.mod h1:gGO7GxHTi1zlRT+cAj8uGG0/8HFiqAeH0TJvoipnuPs=
+golang.org/x/sys v0.0.0-20180928133829-e4b3c5e90611 h1:O33LKL7WyJgjN9CvxfTIomjIClbd/Kq86/iipowHQU0=
+golang.org/x/sys v0.0.0-20180928133829-e4b3c5e90611/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+howett.net/plist v0.0.0-20180609054337-500bd5b9081b h1:r4LwkXZhdblHVSgAvfRjsFpQBorl6S9pAH+AOHVs+28=
+howett.net/plist v0.0.0-20180609054337-500bd5b9081b/go.mod h1:jInWmjR7JRkkon4jlLXDZGVEeY/wo3kOOJEWYhNE+9Y=
